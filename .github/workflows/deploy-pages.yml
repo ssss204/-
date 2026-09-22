@@ -35,6 +35,11 @@ jobs:
         env:
           MIAODA_CLIENT_BASE_PATH: /-/
 
+      - name: Prepare static assets for GitHub Pages
+        run: |
+          mkdir -p dist/output/assets
+          cp -R dist/output_resource/assets/. dist/output/assets/
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:

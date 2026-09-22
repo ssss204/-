@@ -38,9 +38,9 @@ export default function HeroSection() {
           as="h1"
           delay={0.15}
           y={40}
-          className="hero-heading mt-16 w-full whitespace-nowrap text-center text-[clamp(3rem,12vw,10rem)] font-black leading-none tracking-tight sm:mt-20 md:mt-10"
+          className="hero-heading mt-16 w-full whitespace-nowrap text-center text-[clamp(1.8rem,9vw,8rem)] font-black leading-none tracking-tight sm:mt-20 md:mt-10"
         >
-          王瑞轩的博客
+          spongebobwang'blog
         </FadeIn>
       </div>
 

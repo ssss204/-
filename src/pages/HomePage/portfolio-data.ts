@@ -1,13 +1,13 @@
 // EXPORTS: CONTACT_EMAIL, PORTRAIT_SRC, MARQUEE_ROW_1, MARQUEE_ROW_2, DECOR_IMAGES,
 // ABOUT_TEXT, SERVICES, IService, PROJECTS, IProject
 
-export const CONTACT_EMAIL = 'hello@jack3d.studio';
+export const CONTACT_EMAIL = '2875539620@qq.com';
 
-export const PORTRAIT_SRC = '/images/portrait/portrait.png';
-export const EYEBALL_BASE_SRC = '/images/portrait/eyeball-base.png';
+export const PORTRAIT_SRC = '/images/portrait/portrait.webp';
+export const EYEBALL_BASE_SRC = '/images/portrait/eyeball-base.webp';
 export const IRIS_RIGHT_SRC = '/images/portrait/iris-right.png';
 export const IRIS_LEFT_SRC = '/images/portrait/iris-left.png';
-export const GLASSES_TOP_SRC = '/images/portrait/glasses-top.png';
+export const GLASSES_TOP_SRC = '/images/portrait/glasses-top.webp';
 
 export const MARQUEE_ROW_1: string[] = [
   '/images/marquee/m01.gif',

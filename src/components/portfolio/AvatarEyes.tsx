@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { asset } from '@/lib/asset';
 import {
   EYEBALL_BASE_SRC,
@@ -59,6 +59,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 
 export default function AvatarEyes() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isCanvasReady, setIsCanvasReady] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -106,11 +107,6 @@ export default function AvatarEyes() {
       ctx.drawImage(top, 0, 0);
     };
 
-    const drawStatic = (img: CanvasImageSource) => {
-      ctx.clearRect(0, 0, NATURAL_W, NATURAL_H);
-      ctx.drawImage(img, 0, 0, NATURAL_W, NATURAL_H);
-    };
-
     Promise.all([
       loadImage(asset(EYEBALL_BASE_SRC)),
       Promise.all(EYES.map((eye) => loadImage(asset(eye.spriteSrc)))),
@@ -121,6 +117,7 @@ export default function AvatarEyes() {
 
         const render = () => drawFrame(base, sprites, top);
         render();
+        setIsCanvasReady(true);
 
         if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
           return;
@@ -188,15 +185,7 @@ export default function AvatarEyes() {
           document.documentElement.removeEventListener('pointerleave', onPointerLeave);
         });
       })
-      .catch(() => {
-        // 任一素材解码失败：回退显示原始头像
-        if (cancelled) return;
-        loadImage(asset(PORTRAIT_SRC))
-          .then((img) => {
-            if (!cancelled) drawStatic(img);
-          })
-          .catch(() => {});
-      });
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;
@@ -206,15 +195,27 @@ export default function AvatarEyes() {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={NATURAL_W}
-      height={NATURAL_H}
-      role="img"
-      aria-label="Jack 的 3D 虚拟形象，眼睛会跟随鼠标"
-      draggable={false}
-      className="block h-auto w-full select-none"
-      style={{ backgroundImage: 'none' }}
-    />
+    <div className="relative w-full">
+      <img
+        src={asset(PORTRAIT_SRC)}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        fetchPriority="high"
+        className="block h-auto w-full select-none"
+      />
+      <canvas
+        ref={canvasRef}
+        width={NATURAL_W}
+        height={NATURAL_H}
+        role="img"
+        aria-label="Jack 的 3D 虚拟形象，眼睛会跟随鼠标"
+        draggable={false}
+        className={`absolute inset-0 block h-full w-full select-none transition-opacity duration-300 ${
+          isCanvasReady ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{ backgroundImage: 'none' }}
+      />
+    </div>
   );
 }

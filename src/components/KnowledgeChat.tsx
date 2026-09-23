@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { BookOpen, Gamepad2, Loader2, MessageCircle, RotateCcw, Send, X } from 'lucide-react';
+import { BookOpen, Check, CircleX, Gamepad2, Loader2, MessageCircle, RotateCcw, Send, X } from 'lucide-react';
+import { chooseQuestion, GUESS_PERSONS, type GuessPerson, type GuessQuestion } from '@/lib/guess-person-game';
 
 type Message = { role: 'user' | 'assistant'; content: string };
 type ChatMode = 'knowledge' | 'guess-person';
@@ -17,13 +18,19 @@ const initialMessage: Message = {
 
 const gameIntro: Message = {
   role: 'assistant',
-  content: '想好一位朋友，但先不要告诉我是谁。你只需要回答“是”“不是”或“不确定”，我会通过几个问题来猜。',
+  content: '想好一位朋友，先别告诉我是谁。点选“是 / 不是 / 不确定”，我会一步步缩小范围。',
 };
 
 export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps) {
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [mode, setMode] = useState<ChatMode>('knowledge');
+  const [candidates, setCandidates] = useState<GuessPerson[]>([]);
+  const [excludedPeople, setExcludedPeople] = useState<string[]>([]);
+  const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState<GuessQuestion | null>(null);
+  const [guessPending, setGuessPending] = useState(false);
+  const [gameFinished, setGameFinished] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
@@ -52,6 +59,10 @@ export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps
           history: messages,
         }),
       });
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('当前网站还没有部署聊天服务。AI 聊天需要后端 API，GitHub Pages 只能托管静态网页。');
+      }
       const result = (await response.json()) as { answer?: string; error?: string };
       if (!response.ok) throw new Error(result.error || '请求失败');
       setMessages((current) => [...current, { role: 'assistant', content: result.answer || '暂时没有得到有效回答。' }]);
@@ -66,13 +77,122 @@ export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps
     setMode(nextMode);
     setQuestion('');
     setError('');
+    setCandidates([]);
+    setExcludedPeople([]);
+    setAskedQuestions([]);
+    setExcludedPeople([]);
+    setCurrentQuestion(null);
+    setGuessPending(false);
+    setGameFinished(false);
     setMessages([nextMode === 'guess-person' ? gameIntro : initialMessage]);
+    if (nextMode === 'guess-person') startGame();
   };
 
   const resetGame = () => {
     setQuestion('');
     setError('');
-    setMessages([gameIntro]);
+    setAskedQuestions([]);
+    setGuessPending(false);
+    setGameFinished(false);
+    startGame();
+  };
+
+  const startGame = () => {
+    const firstQuestion = chooseQuestion(GUESS_PERSONS, []);
+    setCandidates(GUESS_PERSONS);
+    setExcludedPeople([]);
+    setAskedQuestions(firstQuestion ? [firstQuestion.id] : []);
+    setCurrentQuestion(firstQuestion || null);
+    setMessages([
+      gameIntro,
+      { role: 'assistant', content: firstQuestion?.prompt || '目前线索不足，我们可以再添加一些人物特征。' },
+    ]);
+  };
+
+  const appendGameMessage = (answer: string) => {
+    setMessages((current) => [...current, { role: 'assistant', content: answer }]);
+  };
+
+  const continueGame = (nextCandidates: GuessPerson[], nextAsked: string[]) => {
+    setCandidates(nextCandidates);
+    setAskedQuestions(nextAsked);
+    setGuessPending(false);
+
+    if (nextCandidates.length === 1) {
+      setGuessPending(true);
+      setCurrentQuestion(null);
+      appendGameMessage(`我来猜一下：你想的是 ${nextCandidates[0].person}，对吗？`);
+      return;
+    }
+
+    const nextQuestion = chooseQuestion(nextCandidates, nextAsked);
+    if (!nextQuestion) {
+      setGameFinished(true);
+      setCurrentQuestion(null);
+      appendGameMessage('这些线索还不能唯一确定一个人。可以重新开始，换一组回答试试。');
+      return;
+    }
+
+    setAskedQuestions([...nextAsked, nextQuestion.id]);
+    setCurrentQuestion(nextQuestion);
+    appendGameMessage(nextQuestion.prompt);
+  };
+
+  const answerGame = (answer: 'yes' | 'no' | 'unknown') => {
+    if (gameFinished || (!currentQuestion && !guessPending)) return;
+    const answerLabel = answer === 'yes' ? '是' : answer === 'no' ? '不是' : '不确定';
+    setMessages((current) => [...current, { role: 'user', content: answerLabel }]);
+
+    if (guessPending) {
+      if (answer === 'yes') {
+        setGameFinished(true);
+        setGuessPending(false);
+        appendGameMessage('猜中了！要不要再玩一轮？');
+        return;
+      }
+      const remaining = GUESS_PERSONS.filter(
+        (person) => person.person !== candidates[0]?.person && !excludedPeople.includes(person.person),
+      );
+      if (remaining.length === 0) {
+        setGameFinished(true);
+        setGuessPending(false);
+        appendGameMessage('看来我猜错了。可能有些特征和我理解的不一样，重新开始再玩一轮吧。');
+        return;
+      }
+      const nextQuestion = chooseQuestion(remaining, []);
+      if (!nextQuestion) {
+        setGameFinished(true);
+        setGuessPending(false);
+        return;
+      }
+      setCandidates(remaining);
+      setAskedQuestions([nextQuestion.id]);
+      setCurrentQuestion(nextQuestion);
+      setGuessPending(false);
+      appendGameMessage(nextQuestion.prompt);
+      return;
+    }
+
+    const questionId = askedQuestions[askedQuestions.length - 1];
+    const askedQuestion = currentQuestion;
+    if (!askedQuestion || askedQuestion.id !== questionId) return;
+    const kept = answer === 'unknown'
+      ? candidates
+      : candidates.filter((person) => person.traits.includes(askedQuestion.trait) === (answer === 'yes'));
+    if (kept.length === 0) {
+      appendGameMessage('这组回答和现有线索有点对不上。我们跳过这题，换个角度再问。');
+      const nextQuestion = chooseQuestion(candidates, askedQuestions);
+      if (nextQuestion) {
+        setAskedQuestions([...askedQuestions, nextQuestion.id]);
+        setCurrentQuestion(nextQuestion);
+        appendGameMessage(nextQuestion.prompt);
+      } else {
+        setGameFinished(true);
+      }
+      return;
+    }
+    setExcludedPeople(GUESS_PERSONS.filter((person) => !kept.some((candidate) => candidate.person === person.person)).map((person) => person.person));
+    continueGame(kept, askedQuestions);
   };
 
   return (
@@ -108,12 +228,26 @@ export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps
           </div>
 
           {error && <p className="px-4 pb-2 text-xs text-red-300">{error}</p>}
+          {mode === 'guess-person' ? (
+            <div className="border-t border-white/10 p-3">
+              {gameFinished ? (
+                <button type="button" onClick={resetGame} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#D7E2EA] text-sm font-medium text-[#0C0C0C] transition hover:bg-white"><RotateCcw className="size-4" />再玩一轮</button>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  <button type="button" onClick={() => answerGame('yes')} className="flex h-11 items-center justify-center gap-1.5 rounded-lg bg-[#D7E2EA] text-sm font-medium text-[#0C0C0C] transition hover:bg-white"><Check className="size-4" />是</button>
+                  <button type="button" onClick={() => answerGame('no')} className="flex h-11 items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/5 text-sm text-white transition hover:bg-white/10"><CircleX className="size-4" />不是</button>
+                  <button type="button" onClick={() => answerGame('unknown')} className="h-11 rounded-lg border border-white/15 bg-white/5 text-sm text-white/75 transition hover:bg-white/10">不确定</button>
+                </div>
+              )}
+            </div>
+          ) : (
           <form onSubmit={ask} className="border-t border-white/10 p-3">
             <div className="flex items-end gap-2 rounded-xl border border-white/15 bg-white/5 p-2 focus-within:border-white/35">
-              <textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder={mode === 'guess-person' ? '回答上一个问题...' : '问问我的知识库...'} rows={1} className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-white outline-none placeholder:text-white/35" aria-label="输入内容" />
+              <textarea value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder="问问我的知识库..." rows={1} className="max-h-28 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-white outline-none placeholder:text-white/35" aria-label="输入内容" />
               <button type="submit" disabled={loading || !question.trim()} className="grid size-10 shrink-0 place-items-center rounded-lg bg-[#D7E2EA] text-[#0C0C0C] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-30" aria-label="发送问题"><Send className="size-4" /></button>
             </div>
           </form>
+          )}
         </section>
       )}
       <button type="button" onClick={() => onOpenChange(!open)} className="fixed bottom-6 right-4 z-50 flex items-center gap-2 rounded-full border border-white/20 bg-[#D7E2EA] px-4 py-3 text-sm font-medium text-[#0C0C0C] shadow-xl shadow-black/30 transition hover:-translate-y-0.5 hover:bg-white sm:right-6" aria-label={open ? '关闭知识库问答' : '打开知识库问答'}>

@@ -5,6 +5,7 @@ import { BookOpen, Check, CircleX, Gamepad2, Loader2, MessageCircle, RotateCcw, 
 import { chooseQuestion, GUESS_PERSONS, type GuessPerson, type GuessQuestion } from '@/lib/guess-person-game';
 
 type Message = { role: 'user' | 'assistant'; content: string };
+type GameAnswer = { trait: string; answer: 'yes' | 'no' };
 type ChatMode = 'knowledge' | 'guess-person';
 type KnowledgeChatProps = {
   open: boolean;
@@ -26,8 +27,9 @@ export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps
   const [messages, setMessages] = useState<Message[]>([initialMessage]);
   const [mode, setMode] = useState<ChatMode>('knowledge');
   const [candidates, setCandidates] = useState<GuessPerson[]>([]);
-  const [excludedPeople, setExcludedPeople] = useState<string[]>([]);
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
+  const [gameAnswers, setGameAnswers] = useState<GameAnswer[]>([]);
+  const [rejectedGuesses, setRejectedGuesses] = useState<string[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState<GuessQuestion | null>(null);
   const [guessPending, setGuessPending] = useState(false);
   const [gameFinished, setGameFinished] = useState(false);
@@ -78,9 +80,9 @@ export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps
     setQuestion('');
     setError('');
     setCandidates([]);
-    setExcludedPeople([]);
     setAskedQuestions([]);
-    setExcludedPeople([]);
+    setGameAnswers([]);
+    setRejectedGuesses([]);
     setCurrentQuestion(null);
     setGuessPending(false);
     setGameFinished(false);
@@ -92,6 +94,8 @@ export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps
     setQuestion('');
     setError('');
     setAskedQuestions([]);
+    setGameAnswers([]);
+    setRejectedGuesses([]);
     setGuessPending(false);
     setGameFinished(false);
     startGame();
@@ -100,7 +104,8 @@ export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps
   const startGame = () => {
     const firstQuestion = chooseQuestion(GUESS_PERSONS, []);
     setCandidates(GUESS_PERSONS);
-    setExcludedPeople([]);
+    setGameAnswers([]);
+    setRejectedGuesses([]);
     setAskedQuestions(firstQuestion ? [firstQuestion.id] : []);
     setCurrentQuestion(firstQuestion || null);
     setMessages([
@@ -150,23 +155,60 @@ export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps
         appendGameMessage('猜中了！要不要再玩一轮？');
         return;
       }
-      const remaining = GUESS_PERSONS.filter(
-        (person) => person.person !== candidates[0]?.person && !excludedPeople.includes(person.person),
-      );
+      if (answer === 'unknown') {
+        const possible = GUESS_PERSONS.filter((person) =>
+          !rejectedGuesses.includes(person.person)
+          && gameAnswers.every((item) => person.traits.includes(item.trait) === (item.answer === 'yes')),
+        );
+        const nextQuestion = chooseQuestion(possible, askedQuestions);
+        if (!nextQuestion) {
+          setGameFinished(true);
+          setGuessPending(false);
+          appendGameMessage('没关系。目前线索还不够，我先不乱猜了。重新开始后可以换一组问题。');
+          return;
+        }
+        setCandidates(possible);
+        setAskedQuestions([...askedQuestions, nextQuestion.id]);
+        setCurrentQuestion(nextQuestion);
+        setGuessPending(false);
+        appendGameMessage(`好，我先不锁定这个猜测。再确认一个细节：\n\n${nextQuestion.prompt}`);
+        return;
+      }
+
+      const rejectedPerson = candidates[0]?.person;
+      const nextRejected = [...rejectedGuesses, rejectedPerson].filter(Boolean) as string[];
+      setRejectedGuesses(nextRejected);
+      const alternatives = GUESS_PERSONS.filter((person) => !nextRejected.includes(person.person));
+      const matchScore = (person: GuessPerson) => gameAnswers.reduce((score, item) => {
+        const matches = person.traits.includes(item.trait) === (item.answer === 'yes');
+        return score + (matches ? 1 : -1);
+      }, 0);
+      const highestScore = Math.max(...alternatives.map(matchScore));
+      const remaining = alternatives.filter((person) => matchScore(person) === highestScore);
       if (remaining.length === 0) {
         setGameFinished(true);
         setGuessPending(false);
         appendGameMessage('看来我猜错了。可能有些特征和我理解的不一样，重新开始再玩一轮吧。');
         return;
       }
-      const nextQuestion = chooseQuestion(remaining, []);
+      if (remaining.length === 1) {
+        setCandidates(remaining);
+        setGuessPending(true);
+        setCurrentQuestion(null);
+        setAskedQuestions([]);
+        appendGameMessage(`那我再猜一次：是 ${remaining[0].person} 吗？`);
+        return;
+      }
+      const nextQuestion = chooseQuestion(remaining, askedQuestions);
       if (!nextQuestion) {
         setGameFinished(true);
         setGuessPending(false);
+        setCandidates(remaining);
+        appendGameMessage(`我排除了刚才的猜测。按目前线索，最像的是：${remaining.map((person) => person.person).join('、')}。还需要补充更具体的特征才能继续区分。`);
         return;
       }
       setCandidates(remaining);
-      setAskedQuestions([nextQuestion.id]);
+      setAskedQuestions([...askedQuestions, nextQuestion.id]);
       setCurrentQuestion(nextQuestion);
       setGuessPending(false);
       appendGameMessage(nextQuestion.prompt);
@@ -176,6 +218,9 @@ export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps
     const questionId = askedQuestions[askedQuestions.length - 1];
     const askedQuestion = currentQuestion;
     if (!askedQuestion || askedQuestion.id !== questionId) return;
+    if (answer !== 'unknown') {
+      setGameAnswers((current) => [...current, { trait: askedQuestion.trait, answer }]);
+    }
     const kept = answer === 'unknown'
       ? candidates
       : candidates.filter((person) => person.traits.includes(askedQuestion.trait) === (answer === 'yes'));
@@ -191,7 +236,6 @@ export default function KnowledgeChat({ open, onOpenChange }: KnowledgeChatProps
       }
       return;
     }
-    setExcludedPeople(GUESS_PERSONS.filter((person) => !kept.some((candidate) => candidate.person === person.person)).map((person) => person.person));
     continueGame(kept, askedQuestions);
   };
 

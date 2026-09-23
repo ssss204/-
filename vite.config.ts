@@ -3,6 +3,7 @@ import path from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import chatHandler from './api/chat.ts';
 
 // ── 妙搭部署协议（参考《妙搭应用构建产物规范》）─────────────────────────
 // 构建期环境变量（托管构建时由部署链路自动注入；本地开发不需要，缺省回退）：
@@ -10,6 +11,7 @@ import tailwindcss from '@tailwindcss/vite';
 //   MIAODA_RESOURCE_CDN_PREFIX  JS/CSS 静态资源 CDN 前缀
 const basePath = process.env.MIAODA_CLIENT_BASE_PATH || '/';
 const cdnPrefix = process.env.MIAODA_RESOURCE_CDN_PREFIX;
+const isVercel = process.env.VERCEL === '1';
 
 // 产物分层：vite 原生产物（dist/client，中间产物，整理后删除）→ 妙搭托管产物结构：
 //   dist/output/           index.html + public 同源资源 + routes.json（走应用权限校验）
@@ -77,6 +79,49 @@ function sparkJsonPlugin(): Plugin {
   };
 }
 
+function localApiPlugin(): Plugin {
+  return {
+    name: 'local-knowledge-api',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/api/chat', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end(JSON.stringify({ error: 'Only POST is supported.' }));
+          return;
+        }
+
+        let rawBody = '';
+        req.setEncoding('utf8');
+        req.on('data', (chunk) => {
+          rawBody += chunk;
+        });
+        req.on('end', async () => {
+          try {
+            (req as typeof req & { body?: unknown }).body = JSON.parse(rawBody || '{}');
+            const vercelResponse = {
+              status(code: number) {
+                res.statusCode = code;
+                return {
+                  json(payload: unknown) {
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify(payload));
+                  },
+                };
+              },
+            };
+            await chatHandler(req as never, vercelResponse as never);
+          } catch (error) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: error instanceof Error ? error.message : '本地接口暂时不可用。' }));
+          }
+        });
+      });
+    },
+  };
+}
+
 // 收集 <Route path="..."> 声明的路由；index 路由计为 "/"，通配 "*" 不进枚举
 function collectRoutePaths(srcDir: string): string[] {
   const paths = new Set<string>(['/']);
@@ -100,7 +145,13 @@ function collectRoutePaths(srcDir: string): string[] {
 }
 
 export default defineConfig(({ command }) => ({
-  plugins: [react(), tailwindcss(), miaodaOutputPlugin(), sparkJsonPlugin()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    ...(isVercel ? [] : [localApiPlugin()]),
+    ...(isVercel ? [] : [miaodaOutputPlugin()]),
+    ...(isVercel ? [] : [sparkJsonPlugin()]),
+  ],
   // 生产构建：JS/CSS 引用带 CDN 前缀（无 CDN 时退回 base path）；dev 恒为 /
   base: command === 'build' ? cdnPrefix || basePath : '/',
   define: {
@@ -116,6 +167,6 @@ export default defineConfig(({ command }) => ({
     },
   },
   build: {
-    outDir: 'dist/client',
+    outDir: isVercel ? 'dist' : 'dist/client',
   },
 }));

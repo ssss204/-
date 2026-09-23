@@ -4,6 +4,7 @@ import ContactButton from '@/components/portfolio/ContactButton';
 import AnchorLink from '@/components/portfolio/AnchorLink';
 import AvatarEyes from '@/components/portfolio/AvatarEyes';
 import MusicControl from '@/components/portfolio/MusicControl';
+import { MessageCircle } from 'lucide-react';
 import { CONTACT_EMAIL } from '../portfolio-data';
 
 const NAV_LINKS = [
@@ -13,7 +14,11 @@ const NAV_LINKS = [
   { id: 'contact', label: '联系我' },
 ];
 
-export default function HeroSection() {
+type HeroSectionProps = {
+  onOpenChat: () => void;
+};
+
+export default function HeroSection({ onOpenChat }: HeroSectionProps) {
   return (
     <section className="relative flex h-screen flex-col overflow-x-clip">
       <FadeIn
@@ -30,6 +35,19 @@ export default function HeroSection() {
             {item.label}
           </AnchorLink>
         ))}
+        <button
+          type="button"
+          onClick={onOpenChat}
+          className="galaxy-btn"
+          aria-label="打开知识库聊天"
+        >
+          <span className="galaxy-btn__content">
+            <span className="galaxy-btn__text">聊天</span>
+            <MessageCircle className="galaxy-btn__icon" aria-hidden="true" />
+          </span>
+          <span className="galaxy-btn__glow" aria-hidden="true" />
+          <span className="galaxy-btn__stars" aria-hidden="true" />
+        </button>
         <MusicControl />
       </FadeIn>
 

@@ -50,6 +50,10 @@ export const GUESS_PERSONS: GuessPerson[] = [
     person: '沈希文',
     traits: ['暴躁', '易怒', '爱生气', '追剧', '爱吃辣'],
   },
+  {
+    person: '谢佳怡',
+    traits: ['随和', '热情', '牛逼', '吃', '喝', '玩手机', '打羽毛球', '爱吃辣', '耳机依赖', '爱喝冰的'],
+  },
 ];
 
 export const GUESS_QUESTIONS: GuessQuestion[] = [
@@ -103,6 +107,12 @@ export const GUESS_QUESTIONS: GuessQuestion[] = [
   { id: 'irritable', prompt: '这个人容易暴躁、发脾气吗？', trait: '暴躁' },
   { id: 'anger', prompt: '这个人遇到不顺心的事时容易生气吗？', trait: '易怒' },
   { id: 'drama', prompt: '这个人喜欢追电视剧或连续剧吗？', trait: '追剧' },
+  { id: 'badminton', prompt: '这个人平时喜欢打羽毛球吗？', trait: '打羽毛球' },
+  { id: 'phone', prompt: '这个人平时经常玩手机吗？', trait: '玩手机' },
+  { id: 'headphones', prompt: '这个人平时很依赖耳机，经常戴着耳机吗？', trait: '耳机依赖' },
+  { id: 'cold-drinks', prompt: '这个人喜欢喝冰饮或冰水吗？', trait: '爱喝冰的' },
+  { id: 'good-at-things', prompt: '朋友会用“牛逼”来形容这个人很厉害吗？', trait: '牛逼' },
+  { id: 'enjoys-food-drink', prompt: '这个人平时很享受吃东西、喝饮料吗？', trait: '吃' },
 ];
 
 export function chooseQuestion(candidates: GuessPerson[], askedIds: string[]) {

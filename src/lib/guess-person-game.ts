@@ -38,6 +38,18 @@ export const GUESS_PERSONS: GuessPerson[] = [
     person: '唐弘宇',
     traits: ['打篮球', '看小说', '爱吃甜食'],
   },
+  {
+    person: '谢坤毓',
+    traits: ['美丽', '明艳', '动人', '健身', '睡觉', '画画', '熬夜', '爱吃辣', '不喜欢健身房外运动'],
+  },
+  {
+    person: '洪钰婷',
+    traits: ['慢热', '内敛', '共情力强', '做事认真', '视觉美学', '喜欢小动物', '早睡', '口味清淡', '注重卫生'],
+  },
+  {
+    person: '沈希文',
+    traits: ['暴躁', '易怒', '爱生气', '追剧', '爱吃辣'],
+  },
 ];
 
 export const GUESS_QUESTIONS: GuessQuestion[] = [
@@ -77,6 +89,20 @@ export const GUESS_QUESTIONS: GuessQuestion[] = [
   { id: 'easygoing', prompt: '约活动或做选择时，这个人常说“都行”，比较随和吗？', trait: '随性' },
   { id: 'art', prompt: '这个人喜欢画画或创作绘画作品吗？这里不包括专门画产品设计。', trait: '画画' },
   { id: 'gaming', prompt: '这个人平时会主动玩电子游戏吗？', trait: '打游戏' },
+  { id: 'beauty', prompt: '这个人常给人美丽、明艳动人的印象吗？', trait: '美丽' },
+  { id: 'fitness', prompt: '这个人有去健身房健身的习惯吗？', trait: '健身' },
+  { id: 'sleep', prompt: '这个人平时很喜欢睡觉或补觉吗？', trait: '睡觉' },
+  { id: 'avoids-non-gym-sports', prompt: '除了去健身房，这个人基本不喜欢其他运动吗？', trait: '不喜欢健身房外运动' },
+  { id: 'empathy', prompt: '这个人共情力比较强，容易理解别人的感受吗？', trait: '共情力强' },
+  { id: 'serious', prompt: '这个人做事情通常认真、仔细吗？', trait: '做事认真' },
+  { id: 'visual-aesthetics', prompt: '这个人对视觉美感、配色或画面效果特别感兴趣吗？', trait: '视觉美学' },
+  { id: 'animals', prompt: '这个人喜欢小动物吗？', trait: '喜欢小动物' },
+  { id: 'early-sleep', prompt: '这个人通常习惯早睡吗？', trait: '早睡' },
+  { id: 'light-flavors', prompt: '这个人口味偏清淡、不太喜欢重口味吗？', trait: '口味清淡' },
+  { id: 'hygiene', prompt: '这个人平时很注重卫生和整洁吗？', trait: '注重卫生' },
+  { id: 'irritable', prompt: '这个人容易暴躁、发脾气吗？', trait: '暴躁' },
+  { id: 'anger', prompt: '这个人遇到不顺心的事时容易生气吗？', trait: '易怒' },
+  { id: 'drama', prompt: '这个人喜欢追电视剧或连续剧吗？', trait: '追剧' },
 ];
 
 export function chooseQuestion(candidates: GuessPerson[], askedIds: string[]) {

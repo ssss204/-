@@ -34,6 +34,10 @@ export const GUESS_PERSONS: GuessPerson[] = [
     person: '刘泱莹',
     traits: ['随性', '开心', '懒', '好相处', '平静', '画画', '看视频', '文字游戏', '打扮自己', '出去玩', '爱吃辣', '睡懒觉'],
   },
+  {
+    person: '唐弘宇',
+    traits: ['打篮球', '看小说', '爱吃甜食'],
+  },
 ];
 
 export const GUESS_QUESTIONS: GuessQuestion[] = [
@@ -41,6 +45,7 @@ export const GUESS_QUESTIONS: GuessQuestion[] = [
   { id: 'valorant', prompt: '这个人喜欢玩《无畏契约》（瓦）吗？', trait: '玩瓦' },
   { id: 'volleyball', prompt: '这个人喜欢打排球吗？', trait: '打排球' },
   { id: 'basketball', prompt: '这个人喜欢打篮球吗？', trait: '打篮球' },
+  { id: 'novels', prompt: '这个人喜欢看小说吗？', trait: '看小说' },
   { id: 'product-design', prompt: '这个人会画产品设计吗？', trait: '画产品' },
   { id: 'scenery', prompt: '这个人喜欢旅游并拍风景照吗？', trait: '拍风景照' },
   { id: 'instruments', prompt: '这个人会玩一些乐器吗？', trait: '玩乐器' },

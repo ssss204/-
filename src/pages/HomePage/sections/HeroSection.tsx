@@ -1,11 +1,8 @@
 import FadeIn from '@/components/portfolio/FadeIn';
-import Magnet from '@/components/portfolio/Magnet';
-import ContactButton from '@/components/portfolio/ContactButton';
 import AnchorLink from '@/components/portfolio/AnchorLink';
-import AvatarEyes from '@/components/portfolio/AvatarEyes';
+import InteractiveStarfield from '@/components/portfolio/InteractiveStarfield';
 import MusicControl from '@/components/portfolio/MusicControl';
-import { MessageCircle } from 'lucide-react';
-import { CONTACT_EMAIL } from '../portfolio-data';
+import { ChevronDown, MessageCircle } from 'lucide-react';
 
 const NAV_LINKS = [
   { id: 'about', label: '关于' },
@@ -20,12 +17,15 @@ type HeroSectionProps = {
 
 export default function HeroSection({ onOpenChat }: HeroSectionProps) {
   return (
-    <section className="relative flex h-screen flex-col overflow-x-clip">
+    <section className="relative flex min-h-[100svh] flex-col overflow-hidden bg-[#01040d]">
+      <InteractiveStarfield />
+      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(1,4,13,0.34)_0%,transparent_22%,transparent_76%,rgba(1,4,13,0.46)_100%)]" />
+
       <FadeIn
         as="nav"
         y={-20}
         delay={0}
-        className="flex w-full items-center justify-between gap-2 px-3 pt-4 sm:px-6 sm:pt-6 md:px-10 md:pt-8"
+        className="relative z-30 flex w-full items-center justify-between gap-2 px-3 pt-4 sm:px-6 sm:pt-6 md:px-10 md:pt-8"
       >
         {NAV_LINKS.map((item) => (
           <AnchorLink
@@ -51,33 +51,40 @@ export default function HeroSection({ onOpenChat }: HeroSectionProps) {
         <MusicControl />
       </FadeIn>
 
-      <div className="w-full overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-5 text-center">
+        <div className="w-full max-w-6xl">
+          <FadeIn
+            as="p"
+            delay={0.08}
+            y={18}
+            duration={1.15}
+            className="mb-4 text-xs font-medium uppercase tracking-[0.3em] text-[#B8CFF1] sm:text-sm"
+          >
+            Welcome to my universe
+          </FadeIn>
         <FadeIn
           as="h1"
           delay={0.15}
-          y={40}
-          className="hero-heading mt-16 w-full whitespace-nowrap text-center text-[clamp(1.8rem,9vw,8rem)] font-black leading-none tracking-tight sm:mt-20 md:mt-10"
+            y={46}
+            duration={1.65}
+            className="starfield-title w-full text-center text-[1.65rem] font-black leading-[0.92] min-[420px]:text-[1.9rem] sm:text-5xl md:text-[3.8rem] lg:text-[clamp(4.75rem,8.5vw,8rem)]"
         >
           spongebobwang'blog
         </FadeIn>
-      </div>
-
-      <Magnet className="absolute left-1/2 top-1/2 z-10 w-[280px] -translate-x-1/2 -translate-y-1/2 sm:top-auto sm:bottom-0 sm:w-[360px] sm:translate-y-0 md:w-[440px] lg:w-[520px]">
-        <AvatarEyes />
-      </Magnet>
-
-      <div className="relative z-20 mt-auto flex items-end justify-between px-6 pb-7 sm:pb-8 md:px-10 md:pb-10">
         <FadeIn
           as="p"
-          delay={0.35}
+            delay={0.45}
           y={20}
-          className="max-w-[160px] text-[clamp(0.75rem,1.4vw,1.5rem)] font-light uppercase leading-[1.15] tracking-[0.12em] text-[#D7E2EA] sm:max-w-[220px] md:max-w-[260px]"
+            duration={1.2}
+            className="mx-auto mt-6 max-w-xl text-sm font-light leading-7 text-[#D7E2EA]/80 sm:text-base md:text-lg"
         >
-          一名喜欢创新的小伙 往下翻深入了解
+            在代码与灵感之间，记录每一次探索。
         </FadeIn>
-        <FadeIn delay={0.5} y={20}>
-          <ContactButton email={CONTACT_EMAIL} />
-        </FadeIn>
+        </div>
+      </div>
+
+      <div className="pointer-events-none relative z-20 mt-auto flex justify-center pb-7 sm:pb-9">
+        <ChevronDown className="starfield-scroll h-6 w-6 text-white/55" aria-hidden="true" />
       </div>
     </section>
   );

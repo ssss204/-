@@ -42,7 +42,7 @@ function normalRandom(random: () => number) {
 
 function buildStars(width: number, height: number, reducedMotion: boolean) {
   const area = width * height;
-  const count = Math.min(reducedMotion ? 360 : width < 640 ? 520 : 920, Math.max(320, Math.round(area / 1750)));
+  const count = Math.min(reducedMotion ? 520 : width < 640 ? 900 : 1850, Math.max(420, Math.round(area / 900)));
   const random = createRandom(Math.round(width * 13 + height * 7));
 
   return Array.from({ length: count }, (_, index): Star => {
@@ -53,7 +53,7 @@ function buildStars(width: number, height: number, reducedMotion: boolean) {
     const y = inGalaxy
       ? galaxyY + normalRandom(random) * height * 0.2
       : random() * height;
-    const bright = index % 29 === 0;
+    const bright = index % 31 === 0;
 
     return {
       x,
@@ -62,7 +62,7 @@ function buildStars(width: number, height: number, reducedMotion: boolean) {
       offsetY: 0,
       velocityX: 0,
       velocityY: 0,
-      radius: bright ? 1.5 + random() * 1.25 : 0.35 + random() * 1.15,
+      radius: bright ? 1.55 + random() * 1.4 : 0.3 + random() * 1.05,
       alpha: bright ? 0.76 + random() * 0.22 : 0.28 + random() * 0.62,
       phase: random() * Math.PI * 2,
       speed: 0.00035 + random() * 0.0007,
@@ -93,10 +93,12 @@ function buildSky(width: number, height: number, dpr: number) {
 
   const random = createRandom(Math.round(width * 17 + height * 11));
   const clouds = [
-    { x: 0.18, y: 0.34, radius: 0.32, color: '76 130 255', alpha: 0.12 },
-    { x: 0.47, y: 0.45, radius: 0.38, color: '121 92 255', alpha: 0.13 },
-    { x: 0.73, y: 0.52, radius: 0.34, color: '77 190 255', alpha: 0.11 },
-    { x: 0.9, y: 0.62, radius: 0.3, color: '255 118 200', alpha: 0.08 },
+    { x: 0.08, y: 0.22, radius: 0.34, color: '39 150 255', alpha: 0.13 },
+    { x: 0.26, y: 0.35, radius: 0.3, color: '21 208 255', alpha: 0.15 },
+    { x: 0.46, y: 0.45, radius: 0.38, color: '104 81 255', alpha: 0.15 },
+    { x: 0.63, y: 0.52, radius: 0.32, color: '44 189 255', alpha: 0.13 },
+    { x: 0.82, y: 0.6, radius: 0.33, color: '255 69 190', alpha: 0.1 },
+    { x: 0.96, y: 0.72, radius: 0.28, color: '99 115 255', alpha: 0.12 },
   ];
 
   clouds.forEach((cloud) => {
@@ -116,15 +118,85 @@ function buildSky(width: number, height: number, dpr: number) {
     context.fillRect(0, 0, width, height);
   });
 
+  const galaxyY = (progress: number) => height * (0.28 + progress * 0.28 + Math.sin(progress * Math.PI) * 0.06);
+
+  // Build a soft, irregular Milky Way ribbon from overlapping blurred strokes.
+  context.save();
   context.globalCompositeOperation = 'screen';
-  for (let index = 0; index < Math.min(1250, Math.round((width * height) / 1000)); index += 1) {
+  context.lineCap = 'round';
+  context.filter = 'blur(28px)';
+  const nebulaStrokes = [
+    { color: '28 174 255', width: 0.2, alpha: 0.18, shift: -0.015 },
+    { color: '82 104 255', width: 0.15, alpha: 0.2, shift: 0.02 },
+    { color: '206 86 255', width: 0.11, alpha: 0.13, shift: 0.06 },
+    { color: '255 86 194', width: 0.06, alpha: 0.1, shift: 0.1 },
+  ];
+
+  nebulaStrokes.forEach((stroke) => {
+    context.beginPath();
+    for (let step = 0; step <= 40; step += 1) {
+      const progress = step / 40;
+      const x = progress * width;
+      const y = galaxyY(progress) + height * stroke.shift + Math.sin(progress * 16) * height * 0.012;
+      if (step === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    }
+    context.strokeStyle = `rgb(${stroke.color} / ${stroke.alpha})`;
+    context.lineWidth = height * stroke.width;
+    context.stroke();
+  });
+  context.restore();
+
+  // Add small gas knots and glowing pockets so the band feels granular rather than flat.
+  context.save();
+  context.globalCompositeOperation = 'screen';
+  for (let index = 0; index < 115; index += 1) {
     const progress = random();
     const x = progress * width;
-    const centerY = height * (0.3 + progress * 0.22 + Math.sin(progress * Math.PI) * 0.08);
-    const y = centerY + normalRandom(random) * height * 0.19;
-    const radius = 0.25 + random() * 0.65;
+    const y = galaxyY(progress) + normalRandom(random) * height * 0.16;
+    const radius = width * (0.008 + random() * 0.035);
+    const colors = ['35 196 255', '77 126 255', '170 91 255', '255 86 190'];
+    const color = colors[index % colors.length];
+    const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(0, `rgb(${color} / ${0.12 + random() * 0.16})`);
+    gradient.addColorStop(0.35, `rgb(${color} / ${0.05 + random() * 0.08})`);
+    gradient.addColorStop(1, `rgb(${color} / 0)`);
+    context.fillStyle = gradient;
     context.beginPath();
-    context.fillStyle = `rgb(${150 + Math.round(random() * 105)} ${155 + Math.round(random() * 95)} 255 / ${0.04 + random() * 0.18})`;
+    context.ellipse(x, y, radius, radius * (0.3 + random() * 0.5), random() * Math.PI, 0, Math.PI * 2);
+    context.fill();
+  }
+  context.restore();
+
+  // Narrow dark lanes create the smoky depth visible between bright nebula clouds.
+  context.save();
+  context.globalCompositeOperation = 'destination-out';
+  context.globalAlpha = 0.18;
+  context.filter = 'blur(11px)';
+  [-0.045, 0.025, 0.095].forEach((shift, index) => {
+    context.beginPath();
+    for (let step = 0; step <= 32; step += 1) {
+      const progress = step / 32;
+      const x = progress * width;
+      const y = galaxyY(progress) + height * shift + Math.sin(progress * (12 + index * 2)) * height * 0.014;
+      if (step === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    }
+    context.strokeStyle = '#000';
+    context.lineWidth = height * (0.014 + index * 0.004);
+    context.stroke();
+  });
+  context.restore();
+
+  context.globalCompositeOperation = 'screen';
+  for (let index = 0; index < Math.min(3600, Math.round((width * height) / 420)); index += 1) {
+    const progress = random();
+    const x = progress * width;
+    const y = galaxyY(progress) + normalRandom(random) * height * 0.2;
+    const radius = 0.18 + random() * 0.58;
+    context.beginPath();
+    const colors = ['180 230 255', '99 185 255', '210 190 255', '255 185 240'];
+    context.fillStyle = `rgb(${colors[index % colors.length]} / ${0.04 + random() * 0.2})`;
     context.arc(x, y, radius, 0, Math.PI * 2);
     context.fill();
   }
@@ -233,6 +305,24 @@ export default function InteractiveStarfield() {
           context.beginPath();
           context.arc(x, y, star.radius * 5, 0, Math.PI * 2);
           context.fill();
+        }
+
+        if (star.radius > 2.35) {
+          const flareLength = star.radius * 6.5;
+          const flare = context.createLinearGradient(x - flareLength, y, x + flareLength, y);
+          flare.addColorStop(0, `rgb(${star.color} / 0)`);
+          flare.addColorStop(0.5, `rgb(${star.color} / ${alpha * 0.42})`);
+          flare.addColorStop(1, `rgb(${star.color} / 0)`);
+          context.strokeStyle = flare;
+          context.lineWidth = 0.7;
+          context.beginPath();
+          context.moveTo(x - flareLength, y);
+          context.lineTo(x + flareLength, y);
+          context.stroke();
+          context.beginPath();
+          context.moveTo(x, y - flareLength * 0.72);
+          context.lineTo(x, y + flareLength * 0.72);
+          context.stroke();
         }
 
         context.fillStyle = `rgb(${star.color} / ${alpha})`;

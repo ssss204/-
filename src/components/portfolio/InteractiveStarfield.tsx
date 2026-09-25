@@ -24,7 +24,7 @@ type PointerState = {
   active: boolean;
 };
 
-const STAR_COLORS = ['255 255 255', '183 218 255', '132 196 255', '203 183 255', '255 201 235'];
+const STAR_COLORS = ['255 247 181', '255 214 111', '213 232 255', '150 211 255', '215 183 255'];
 
 function createRandom(seed: number) {
   return () => {
@@ -117,6 +117,66 @@ function buildSky(width: number, height: number, dpr: number) {
     context.fillStyle = gradient;
     context.fillRect(0, 0, width, height);
   });
+
+  // Van Gogh-inspired brush spirals: layered, imperfect curves keep the sky painterly.
+  context.save();
+  context.globalCompositeOperation = 'screen';
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+  context.filter = 'blur(0.35px)';
+  const brushColors = ['48 145 255', '37 195 244', '103 103 255', '190 93 235', '255 190 82'];
+  const swirls = [
+    { x: 0.25, y: 0.26, radiusX: 0.2, radiusY: 0.15, turns: 1.25, phase: 0.8 },
+    { x: 0.62, y: 0.27, radiusX: 0.26, radiusY: 0.18, turns: 1.1, phase: 2.5 },
+    { x: 0.88, y: 0.46, radiusX: 0.22, radiusY: 0.16, turns: 1.4, phase: 4.2 },
+  ];
+
+  swirls.forEach((swirl, swirlIndex) => {
+    for (let band = 0; band < 10; band += 1) {
+      const points: Array<[number, number]> = [];
+      const phase = swirl.phase + band * 0.075;
+      const spread = band * 0.006;
+      for (let step = 0; step <= 34; step += 1) {
+        const progress = step / 34;
+        const angle = phase + progress * Math.PI * 2 * swirl.turns;
+        const radius = 0.13 + progress * 0.87;
+        const wobble = Math.sin(progress * 19 + band) * 0.008;
+        const x = width * swirl.x + Math.cos(angle) * width * (swirl.radiusX + spread) * (radius + wobble);
+        const y = height * swirl.y + Math.sin(angle) * height * (swirl.radiusY + spread) * (radius + wobble);
+        points.push([x, y]);
+      }
+
+      context.beginPath();
+      points.forEach(([x, y], index) => {
+        if (index === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      });
+      const color = brushColors[(swirlIndex + band) % brushColors.length];
+      context.strokeStyle = `rgb(${color} / ${0.08 + random() * 0.08})`;
+      context.lineWidth = height * (0.006 + random() * 0.007);
+      context.stroke();
+    }
+  });
+
+  // Long directional strokes tie the separate eddies into one moving night sky.
+  for (let stroke = 0; stroke < 18; stroke += 1) {
+    const startY = height * (0.08 + stroke * 0.037);
+    const bend = height * (0.05 + random() * 0.12);
+    context.beginPath();
+    context.moveTo(-width * 0.08, startY);
+    context.bezierCurveTo(
+      width * 0.24,
+      startY - bend,
+      width * 0.54,
+      startY + bend,
+      width * 1.08,
+      startY - bend * 0.55,
+    );
+    context.strokeStyle = `rgb(${brushColors[stroke % 4]} / ${0.045 + random() * 0.045})`;
+    context.lineWidth = height * (0.004 + random() * 0.005);
+    context.stroke();
+  }
+  context.restore();
 
   const galaxyY = (progress: number) => height * (0.28 + progress * 0.28 + Math.sin(progress * Math.PI) * 0.06);
 

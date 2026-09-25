@@ -266,6 +266,87 @@ function buildSky(width: number, height: number, dpr: number) {
   return canvas;
 }
 
+function drawFlowingBrushwork(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  time: number,
+  reducedMotion: boolean,
+) {
+  if (reducedMotion) return;
+
+  const flow = time * 0.00008;
+  const swirls = [
+    { x: 0.25, y: 0.26, radiusX: 0.2, radiusY: 0.15, turns: 1.25, phase: 0.8 },
+    { x: 0.62, y: 0.27, radiusX: 0.26, radiusY: 0.18, turns: 1.1, phase: 2.5 },
+    { x: 0.88, y: 0.46, radiusX: 0.22, radiusY: 0.16, turns: 1.4, phase: 4.2 },
+  ];
+  const brushColors = ['62 174 255', '119 117 255', '202 109 240'];
+
+  context.save();
+  context.globalCompositeOperation = 'screen';
+  context.lineCap = 'round';
+  context.lineJoin = 'round';
+
+  swirls.forEach((swirl, swirlIndex) => {
+    for (let band = 0; band < 5; band += 1) {
+      const phase = swirl.phase + band * 0.09 + flow * (swirlIndex % 2 === 0 ? 0.9 : -0.72);
+      const points: Array<[number, number]> = [];
+
+      for (let step = 0; step <= 42; step += 1) {
+        const progress = step / 42;
+        const angle = phase + progress * Math.PI * 2 * swirl.turns;
+        const radius = 0.13 + progress * 0.87;
+        const wobble = Math.sin(progress * 19 + band) * 0.008;
+        points.push([
+          width * swirl.x + Math.cos(angle) * width * (swirl.radiusX + band * 0.005) * (radius + wobble),
+          height * swirl.y + Math.sin(angle) * height * (swirl.radiusY + band * 0.005) * (radius + wobble),
+        ]);
+      }
+
+      const color = brushColors[(swirlIndex + band) % brushColors.length];
+      const glowWidth = Math.max(5, Math.min(15, height * 0.014));
+      const coreWidth = Math.max(1.4, Math.min(4.5, height * 0.004));
+
+      context.beginPath();
+      points.forEach(([x, y], index) => {
+        if (index === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      });
+      context.strokeStyle = `rgb(${color} / 0.24)`;
+      context.lineWidth = glowWidth;
+      context.shadowColor = `rgb(${color} / 0.8)`;
+      context.shadowBlur = 24;
+      context.stroke();
+
+      context.beginPath();
+      points.forEach(([x, y], index) => {
+        if (index === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      });
+      context.strokeStyle = `rgb(${color} / 0.58)`;
+      context.lineWidth = coreWidth;
+      context.shadowBlur = 8;
+      context.stroke();
+
+      const highlightStart = Math.floor(((flow * 0.24 + swirlIndex * 0.31 + band * 0.08) % 1) * 30);
+      const highlightPoints = points.slice(highlightStart, highlightStart + 9);
+      context.beginPath();
+      highlightPoints.forEach(([x, y], index) => {
+        if (index === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      });
+      context.strokeStyle = `rgb(255 226 143 / 0.9)`;
+      context.lineWidth = Math.max(2, coreWidth * 0.9);
+      context.shadowColor = 'rgb(255 199 93 / 0.95)';
+      context.shadowBlur = 17;
+      context.stroke();
+    }
+  });
+
+  context.restore();
+}
+
 export default function InteractiveStarfield() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -326,6 +407,7 @@ export default function InteractiveStarfield() {
     const draw = (time: number) => {
       context.clearRect(0, 0, width, height);
       context.drawImage(sky, 0, 0, sky.width, sky.height, 0, 0, width, height);
+      drawFlowingBrushwork(context, width, height, time, reducedMotion);
       context.globalCompositeOperation = 'screen';
 
       stars.forEach((star) => {
